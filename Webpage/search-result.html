@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Search Results</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #1a1a1a;
+      color: #eaeaea;
+    }
+
+    #buttonbar {
+      display: flex;
+      flex-direction: row-reverse;
+      gap: 10px;
+
+      >button {
+        padding: 10px;
+        cursor: pointer;
+      }
+    }
+
+
+    .light-theme {
+      background-color: #f0f0f0;
+      color: #333;
+    }
+    .movie-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      padding: 20px;
+    }
+    .movie-item {
+      cursor: pointer;
+      text-align: center;
+    }
+    .movie-item img {
+      width: 100%;
+      max-width: 200px;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+    }
+    .movie-title {
+      margin-top: 10px;
+      font-size: 18px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div id="buttonbar">
+    <button onclick="toggleTheme()">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+        class="size-6" width="24" height="24">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
+      </svg>
+    </button>
+    <button onclick="returnToHomepage()">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
+        class="size-6" width="24" height="24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+      </svg>
+    </button>
+  </div>
+
+  <h1>Your Search Results</h1>
+  <div>
+    <!-- Search Term: <span id="searchTerm"></span><br> -->
+    Language: <span id="language"></span><br>
+    Year: <span id="year"></span><br>
+    Genres: <span id="genres"></span>
+  </div>
+  <div class="movie-grid" id="searchResults"></div>
+
+  <script>
+    let movieData = [];
+    const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
+
+    // Fetch movie data from the attached JSON file
+    async function loadMovies() {
+      const response = await fetch('../Json/MOVIE_WITH_GENRES_min.json');
+      movieData = await response.json();
+      fetchMovies(); // Fetch and display the search results
+    }
+
+    // Fetch the movies based on the filters passed in the URL
+    function fetchMovies() {
+      const params = new URLSearchParams(window.location.search);
+      const searchTerm = params.get('search')?.toLowerCase() || '';
+      const language = params.get('language')?.toLowerCase() || '';
+      const year = params.get('year') || '';
+
+      // Correct how genres are parsed
+      const genres = params.get('genre') ? params.get('genre').split(',') : [];
+
+      // document.getElementById("searchTerm").textContent = searchTerm || "-";
+      document.getElementById("language").textContent = language || "-";
+      document.getElementById("year").textContent = year || "-";
+      document.getElementById("genres").textContent = genres.join(", ") || "-";
+
+      const filteredMovies = movieData.filter(movie => {
+        const matchesSearch = movie.TITLE.toLowerCase().includes(searchTerm);
+        const matchesLanguage = language ? movie.ORIGINAL_LANGUAGE.toLowerCase() === language : true;
+        const matchesYear = year ? movie.RELEASE_DATE.includes(year) : true;
+
+        // Ensure genres are matched correctly
+        const matchesGenre = genres.length ? genres.every(g => movie.Genres.some(genre => genre.includes(g))) : true;
+
+        return matchesSearch && matchesLanguage && matchesYear && matchesGenre;
+      });
+
+      displayMovies(filteredMovies);
+    }
+
+
+    // Display the filtered movies in a grid format
+    function displayMovies(movies) {
+      const MAX_COUNT = 30;
+      const searchResultsContainer = document.getElementById('searchResults');
+      searchResultsContainer.innerHTML = ''; // Clear any previous results
+
+      if (movies.length === 0) {
+        searchResultsContainer.innerHTML = '<p>No movies found. Please try a different search.</p>';
+        return;
+      }
+
+      movies.slice(0, MAX_COUNT).forEach(movie => {
+        const movieItem = document.createElement('div');
+        movieItem.classList.add('movie-item');
+        movieItem.innerHTML = `
+          <img src="${IMAGE_BASE_URL + movie.POSTER_PATH || 'https://placehold.co/50x75?text=[no+poster]'}" alt="${movie.TITLE}">
+          <div class="movie-title">${movie.TITLE}</div>
+        `;
+        movieItem.addEventListener('click', () => {
+          window.location.href = `movie.html?id=${movie.FILMID}`;
+        });
+        searchResultsContainer.appendChild(movieItem);
+      });
+    }
+
+    // Toggle between light and dark themes
+    function toggleTheme() {
+      document.body.classList.toggle('light-theme');
+      if (document.body.classList.contains('light-theme')) {
+        localStorage.setItem('theme', 'light');
+      } else {
+        localStorage.setItem('theme', 'dark');
+      }
+    }
+
+    // Load movie data and apply the saved theme when the page loads
+    window.onload = function() {
+      loadMovies();
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme === 'light') {
+        document.body.classList.add('light-theme');
+      }
+    };
+
+    function returnToHomepage() {
+      window.location.href = 'index.html';  // Redirect to the homepage
+    }
+    
+  </script>
+</body>
+</html>
+
